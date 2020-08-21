@@ -55,20 +55,25 @@ def get_vol(): # Получение уровня звука
 
 # создаем игру и окно
 pygame.init()
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("My Game")
 clock = pygame.time.Clock()
+gg_img = pygame.image.load(PATH_TO_ICO).convert_alpha()
+pygame.display.set_icon(gg_img)
 
 # загрузка текстур
 
 ball_img = pygame.image.load(PATH_TO_BALL).convert_alpha()
-ball_img = pygame.transform.scale(ball_img, (RADIUS*2, RADIUS*2))
+# ball_img = pygame.transform.scale(ball_img, (RADIUS*2, RADIUS*2))
 background_center = pygame.image.load(PATH_TO_BACK_1).convert()
 background_center = pygame.transform.scale(background_center, (WIDTH, HEIGHT-(BOTTOM*2)))
 background_bottom = pygame.image.load(PATH_TO_BACK_2).convert()
 background_bottom_1 = pygame.transform.scale(background_bottom, (WIDTH, BOTTOM))
 wall = pygame.image.load(PATH_TO_BACK_2).convert()
 
+bottom_line = pygame.image.load(PATH_TO_BOTTOM).convert()
+bottom_line = pygame.transform.scale(bottom_line, (WIDTH, 200))
 
 class Wall(pygame.sprite.Sprite):
     def __init__(self):
@@ -89,82 +94,123 @@ class Wall(pygame.sprite.Sprite):
         if self.rect.centerx < -1 * (self.x_size/2):
             self.kill()
 
+class Ball(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.transform.scale(ball_img, (RADIUS*2, RADIUS*2))
+        self.rect = self.image.get_rect()
+        self.rect.centerx = 100
+        self.rect.centery = int(HEIGHT/2) + 50
+        self.last_vol = HEIGHT - ((get_vol()*VOL_ADD_RATE)+25)
+        self.vol_level = HEIGHT - ((get_vol()*VOL_ADD_RATE)+25)
+
+    def update(self):
+        self.last_vol = self.vol_level
+        self.vol_level = HEIGHT - ((get_vol()*VOL_ADD_RATE)+25)
+        print(self.vol_level)
+
+        if self.vol_level > HEIGHT-BOTTOM:
+            self.vol_level = (HEIGHT-BOTTOM) - RADIUS
+        elif self.vol_level < BOTTOM:
+            self.vol_level = BOTTOM+RADIUS
+
+        if self.vol_level - self.last_vol < -ANIMATION_RATE:
+            self.vol_level = self.last_vol - ANIMATION_RATE
+        elif self.vol_level - self.last_vol > ANIMATION_RATE:
+            self.vol_level = self.last_vol + ANIMATION_RATE 
+        elif abs(self.vol_level - self.last_vol) > 0 and abs(self.vol_level - self.last_vol) < 12:
+            self.vol_level = self.last_vol
+        self.rect.centery = self.vol_level
+
+
 
 
 counter = 0
-last_wall = 0
 vol_level = int(HEIGHT/2) + 50
 
-all_walls = pygame.sprite.Group()
-last_wall = 0
+top_ball = pygame.sprite.Group()
+top_ball.add(Ball())
 
-def new_wall(last_wall):
-    if last_wall < randint(40, DELAY_GENERATE_WALL):
-        last_wall += 1
-    else:
-        h = randint(0, 1e5)
-        if h%2 == 0:
-            new_wall = Wall()
-            all_walls.add(new_wall)
-            last_wall = 0
-        last_wall += 1
 
-    return last_wall
 
- 
+start_screen = True
+game = False
+end_game = False
+gg = 0
+
 while True:
     clock.tick(FPS)
+    if(start_screen == True):
+        screen.fill(WHITE)
+        for i in pygame.event.get():
+            print(i.type)
+            print(pygame.K_UP)
+            if i.type == 769:
+                print("gg")
+                gg = 0
+                game = True
+                end_game = False
+                start_screen = False
+            elif i.type == pygame.QUIT: exit()    
+            
+        pygame.display.update()
 
-    last_wall = new_wall(last_wall)
-    last_vol = vol_level
-    vol_level = HEIGHT - ((get_vol()*VOL_ADD_RATE)+25)
+    elif(game):
+        if gg == 0:
+            del all_walls
+            del top_ball
 
-    if vol_level > HEIGHT-BOTTOM:
-        vol_level = (HEIGHT-BOTTOM) - RADIUS
-    elif vol_level < BOTTOM:
-        vol_level = BOTTOM+RADIUS
+            all_walls = pygame.sprite.Group()
+            top_ball = pygame.sprite.Group()
+            top_ball.add(Ball())
 
-    if vol_level - last_vol < -ANIMATION_RATE:
-        vol_level = last_vol - ANIMATION_RATE
-    elif vol_level - last_vol > ANIMATION_RATE:
-        vol_level = last_vol + ANIMATION_RATE 
-    elif abs(vol_level - last_vol) > 0 and abs(vol_level - last_vol) < 12:
-        vol_level = last_vol
+        last_wall = new_wall(last_wall)
 
+        screen.fill(WHITE)
 
-    screen.fill(WHITE)
+        # Фон сверху и снизу
+        background_bottom_1_rec = background_bottom_1.get_rect(center=(WIDTH//2, BOTTOM//2))
+        screen.blit(background_bottom_1, background_bottom_1_rec) 
 
-    # Фон сверху и снизу
-    background_bottom_1_rec = background_bottom_1.get_rect(center=(WIDTH//2, BOTTOM//2))
-    screen.blit(background_bottom_1, background_bottom_1_rec) 
+        background_bottom_1_rec = background_bottom_1.get_rect(center=(WIDTH//2, HEIGHT - (BOTTOM//2)))
+        screen.blit(background_bottom_1, background_bottom_1_rec) 
 
-    background_bottom_1_rec = background_bottom_1.get_rect(center=(WIDTH//2, HEIGHT - (BOTTOM//2)))
-    screen.blit(background_bottom_1, background_bottom_1_rec) 
+        bottom_line_rec = bottom_line.get_rect(center=[WIDTH//2, BOTTOM+65])
+        screen.blit(bottom_line, bottom_line_rec)
+        bottom_line_rec = bottom_line.get_rect(center=[WIDTH//2, (HEIGHT - BOTTOM)+70])
+        screen.blit(bottom_line, bottom_line_rec)
 
-    #background_bottom_1_rec = background_bottom_1.get_rect(center=(WIDTH - (BOTTOM/2), HEIGHT/2))
-    #screen.blit(background_bottom_1, background_bottom_1_rec) 
-    
-    # Фон в центре
-    background_center_rec = background_center.get_rect(center=(int(WIDTH/2), int(HEIGHT/2)))
-    screen.blit(background_center, background_center_rec) 
+        
+        # Фон в центре
+        background_center_rec = background_center.get_rect(center=(int(WIDTH/2), int(HEIGHT/2)))
+        screen.blit(background_center, background_center_rec) 
 
-    # Шар
-    ball_img_rec = ball_img.get_rect(center=(100, vol_level))
-    screen.blit(ball_img, ball_img_rec)
-    all_walls.draw(screen)
+        all_walls.draw(screen)
+        top_ball.draw(screen)
+        top_ball.update()
+        all_walls.update()
 
+        hits = pygame.sprite.groupcollide(top_ball, all_walls, False, False)
+        if hits != {}:
+            game = False
+            end_game = True
+            start_screen = False
 
-    # Линии сверху, снизу 
-    pygame.draw.line(screen, (123, 123, 123), [0, BOTTOM], [WIDTH, BOTTOM], 3)
-    pygame.draw.line(screen, (123, 123, 123), [0, HEIGHT-BOTTOM], [WIDTH, HEIGHT-BOTTOM], 3)
-
-    all_walls.update()
-    pygame.display.update()
-
+        pygame.display.update()
+        gg += 1
+        for i in pygame.event.get():
+            if i.type == pygame.QUIT: exit() 
 
 
-    for i in pygame.event.get():
-        if i.type == pygame.QUIT: exit()
+    elif(end_game):
+        screen.fill(WHITE)
+        for i in pygame.event.get():
+            if i.type == 769:
+                gg = 0
+                game = True
+                end_game = False
+                start_screen = False
+            elif i.type == pygame.QUIT: exit() 
 
-    
+        pygame.display.update()
 
